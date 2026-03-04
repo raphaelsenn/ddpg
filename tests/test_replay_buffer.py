@@ -123,7 +123,7 @@ class TestReplayBuffer:
             d: bool
     ) -> None:
         for _ in range(10):
-            buffer.push(s, a, r, s_nxt, d)        
+            buffer.push(s, a, r, s_nxt, d)
 
         s, a, r, s_nxt, d = buffer.sample()
         

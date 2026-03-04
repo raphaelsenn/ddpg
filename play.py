@@ -3,25 +3,21 @@ from argparse import Namespace, ArgumentParser
 import torch
 import gymnasium as gym
 
-from ddpg.ddpg import DDPG
 from ddpg.actor import ActorMLP
-from ddpg.critic import CriticMLP
 
 
 
 def parse_args() -> Namespace:
-    parser = ArgumentParser(description="DDPG training")
+    parser = ArgumentParser(description="Online Evaluation")
 
-    parser.add_argument("--env_id", type=str, default="Hopper-v5")
-    parser.add_argument("--state_dim", type=int, default=11)
-    parser.add_argument("--action_dim", type=int, default=3)
+    parser.add_argument("--env_id", type=str, default="HalfCheetah-v5")
+    parser.add_argument("--state_dim", type=int, default=17)
+    parser.add_argument("--action_dim", type=int, default=6)
     parser.add_argument("--device", type=str, default="cpu")
 
     parser.add_argument("--h1_dim", type=int, default=400)
     parser.add_argument("--h2_dim", type=int, default=300)
-
-
-    parser.add_argument("--weights", type=str, default="Hopper-v5-DDPG-Checkpoints/Hopper-v5-DDPG-Actor-Lr0.0001-t200000.pt")
+    parser.add_argument("--weights", type=str, default="HalfCheetah-v5-DDPG-Checkpoints/HalfCheetah-v5-DDPG-Actor-Lr0.0003-t980000.pt")
 
     parser.add_argument("--verbose", default=True)
 

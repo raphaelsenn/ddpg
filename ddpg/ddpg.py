@@ -32,11 +32,11 @@ class DDPG:
             tau: float,
             batch_size: int,
             device: str="cpu",
-            noise_std: float=1.0,
+            noise_std: float=0.1,
             weight_decay_critic: float=0.02,
-            buffer_capacity: int=100_000,
-            buffer_start_size: int=10_000,
-            update_target_networks_every: int=10_000,
+            buffer_capacity: int=1_000_000,
+            buffer_start_size: int=25_000,
+            n_eval_runs: int=10, 
             eval_every: int=1_000,
             save_every: int=100_000,
     ) -> None:
@@ -55,7 +55,8 @@ class DDPG:
 
         # Optimizers 
         self.optimizer_actor = torch.optim.Adam(self.actor.parameters(), lr=lr_actor)
-        self.optimizer_critic = torch.optim.AdamW(self.critic.parameters(), lr=lr_critic, weight_decay=weight_decay_critic)
+        # self.optimizer_critic = torch.optim.AdamW(self.critic.parameters(), lr=lr_critic, weight_decay=weight_decay_critic)
+        self.optimizer_critic = torch.optim.Adam(self.critic.parameters(), lr=lr_critic, weight_decay=weight_decay_critic)
 
         # Losses 
         self.criterion_critic = nn.MSELoss()
@@ -83,13 +84,13 @@ class DDPG:
 
         # More settings
         self.buffer_start_size = buffer_start_size
-        self.update_target_networks_every = update_target_networks_every
+        self.n_eval_runs = n_eval_runs 
         self.save_every = save_every
         self.eval_every = eval_every
 
         # Stats
         self.global_step = 0
-        self.stats = {"timestep" : [], "mean_episode_return" : []}
+        self.stats = {"timestep" : [], "mean_episode_return" : [], "std_episode_return": []}
 
     @torch.no_grad()
     def get_action(self, x: np.ndarray, noise: bool=True) -> np.ndarray:
@@ -127,6 +128,7 @@ class DDPG:
         loss_actor.backward()
         self.optimizer_actor.step()
 
+    @torch.no_grad()
     def update_target_networks(self) -> None:
         # Update critic (target) 
         for theta, theta_old in zip(self.critic.parameters(), self.critic_target.parameters()):
@@ -150,15 +152,14 @@ class DDPG:
             s_nxt, r, terminated, truncated, info = env.step(a)
             done = terminated or truncated
 
-            self.replay_buffer.push(s, a, r, s_nxt, done)
+            self.replay_buffer.push(s, a, r, s_nxt, terminated)
 
             self.update_networks()
             self.update_target_networks()
 
             if self.global_step % self.eval_every == 0:
-                mean_ep_reward = np.mean(self.evaluate())
-                self.stats["timestep"].append(self.global_step)
-                self.stats["mean_episode_return"].append(mean_ep_reward)
+                self.evaluate()
+                mean_ep_reward = self.stats["mean_episode_return"][-1] 
                 print(f"timestep: {self.global_step}\tmean-episode-return: {mean_ep_reward:.2f}")
 
             if self.global_step % self.save_every == 0:
@@ -166,6 +167,7 @@ class DDPG:
 
             s = s_nxt
             self.global_step += 1
+        self._checkpoint()
         env.close()
 
     def explore_env(self, env: gym.Env) -> None:
@@ -174,18 +176,19 @@ class DDPG:
         for _ in range(self.buffer_start_size): 
             if done:
                 s, _ = env.reset()
-            a = self.get_action(s)
+            a = env.action_space.sample()
             s_nxt, r, terminated, truncated, _ = env.step(a)
             done = terminated or truncated
-            self.replay_buffer.push(s, a, r, s_nxt, done)
+
+            self.replay_buffer.push(s, a, r, s_nxt, terminated)
             s = s_nxt
     
     @torch.inference_mode() 
-    def evaluate(self) -> list[int]:
+    def evaluate(self) -> None:
         self.actor.eval(); self.critic.eval()
         env = gym.make(self.env_id, render_mode=None)
         rewards = []
-        for _ in range(5):
+        for _ in range(self.n_eval_runs):
             reward_sum = 0.0 
             done = False
             s, _ = env.reset()
@@ -197,7 +200,14 @@ class DDPG:
                 reward_sum += r
             rewards.append(reward_sum)
         env.close() 
-        return rewards
+        self._update_stats(rewards)
+
+    def _update_stats(self, returns: list[float]) -> None:
+        mean_ep_reward = float(np.mean(returns))
+        std_ep_reward = float(np.std(returns))
+        self.stats["timestep"].append(self.global_step)
+        self.stats["mean_episode_return"].append(mean_ep_reward)
+        self.stats["std_episode_return"].append(std_ep_reward)
 
     def _cache_env(self, env: gym.Env) -> None:
         self.env_id = env.spec.id
