@@ -8,7 +8,7 @@ from ddpg import ActorMLP
 
 @pytest.fixture
 def actor() -> ActorMLP:
-    return ActorMLP(784, 400, 300, 10)
+    return ActorMLP(784, 400, 300, 10, 1.0)
 
 
 @pytest.fixture
@@ -32,10 +32,13 @@ class TestActorMLP:
         assert actor.h1_dim == 400
         assert actor.h2_dim == 300
         assert actor.action_dim == 10
+        assert actor.action_scale == 1.0
 
     def test_forward_shape(self, actor: ActorMLP, state_batch: torch.Tensor) -> None:
         out = actor(state_batch)
         assert out.shape == (64, 10)
+        assert out.max() <= 1.0
+        assert out.min() >= -1.0
 
     def test_predict_numpy_1(self, actor: ActorMLP, state: torch.Tensor) -> None:
         out = actor.predict(state)

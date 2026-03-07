@@ -216,10 +216,18 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Checkpoint folders
-HalfCheetah-v5-DDPG-Checkpoints
-Ant-v5-DDPG-Checkpoints
-Walker2d-v5-DDPG-Checkpoints
-Hopper-v5-DDPG-Checkpoints
+HalfCheetah-v5-DDPG-Checkpoints-Seed0
+HalfCheetah-v5-DDPG-Checkpoints-Seed1
+HalfCheetah-v5-DDPG-Checkpoints-Seed2
+Ant-v5-DDPG-Checkpoints-Seed0
+Ant-v5-DDPG-Checkpoints-Seed1
+Ant-v5-DDPG-Checkpoints-Seed2
+Walker2d-v5-DDPG-Checkpoints-Seed0
+Walker2d-v5-DDPG-Checkpoints-Seed1
+Walker2d-v5-DDPG-Checkpoints-Seed2
+Hopper-v5-DDPG-Checkpoints-Seed0
+Hopper-v5-DDPG-Checkpoints-Seed1
+Hopper-v5-DDPG-Checkpoints-Seed2
 
 # *.pt's
 *.pt
@@ -232,3 +240,5 @@ Hopper-v5-DDPG-Checkpoints
 
 # Ignore csv's
 *.csv
+
+run_experiment.sh

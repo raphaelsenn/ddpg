@@ -13,7 +13,8 @@ class Actor(nn.Module, ABC):
     def __init__(
             self,
             obs_shape: Tuple[int, ...],
-            action_dim: int, 
+            action_dim: int,
+            action_scale: float=1.0
     ) -> None:
         super().__init__()
         if action_dim <= 0:
@@ -23,6 +24,7 @@ class Actor(nn.Module, ABC):
 
         self.obs_shape = tuple(int(element) for element in obs_shape)
         self.action_dim = action_dim
+        self.action_scale = action_scale
 
     @abstractmethod
     def forward(self, s: torch.Tensor) -> torch.Tensor:
@@ -40,49 +42,49 @@ class Actor(nn.Module, ABC):
         if s_t.dim() == len(self.obs_shape):
             s_t = s_t.unsqueeze(0)
         a_t = self(s_t).detach().cpu().numpy().flatten()
-        return a_t
+        return self.action_scale * a_t
 
     def copy(self) -> 'Actor':
         return copy.deepcopy(self)
 
 
 class ActorMLP(Actor):
+        """
+        This actor implementation difers from the original paper. 
+        
+        Reference:
+        ---------- 
+        Addressing Function Approximation Error in Actor-Critic Methods, Fujimoto et al., 2018
+        https://arxiv.org/abs/1802.09477 
+        
+        Continuous control with deep reinforcement learning, 
+        https://arxiv.org/abs/1509.02971, Lillicrap et al., 2015
+        """ 
         def __init__(
                 self, 
                 state_dim: int, 
                 h1_dim: int,
                 h2_dim: int,
-                action_dim: int, 
+                action_dim: int,
+                action_scale: float=1.0
         ) -> None:
-            super().__init__((state_dim,), action_dim)
+            super().__init__((state_dim,), action_dim, action_scale)
             self.state_dim = state_dim
             self.h1_dim = h1_dim
             self.h2_dim = h2_dim
 
             self.mlp = nn.Sequential(
                 nn.Linear(state_dim, h1_dim),
-                nn.LayerNorm(h1_dim),
                 nn.ReLU(True),
 
                 nn.Linear(h1_dim, h2_dim),
-                nn.LayerNorm(h2_dim),
                 nn.ReLU(True),
             
                 nn.Linear(h2_dim, action_dim),
-                nn.LayerNorm(action_dim),
                 nn.Tanh() 
             )
-            self.init_weights()
 
         def forward(self, s: torch.Tensor) -> torch.Tensor:
             if s.dim() == len(self.obs_shape):
                 s.unsqueeze_(0)
-            return self.mlp(s)
-        
-        def init_weights(self) -> None:
-            for m in self.modules():
-                if isinstance(m, nn.Linear): 
-                    if m.weight.shape[0] == self.action_dim:
-                        nn.init.uniform_(m.weight, -0.003, 0.003)
-                        if m.bias is not None: 
-                            nn.init.uniform_(m.bias, -0.003, 0.003)
+            return self.action_scale * self.mlp(s)

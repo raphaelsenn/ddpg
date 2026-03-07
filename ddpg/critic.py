@@ -6,7 +6,6 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class Critic(nn.Module, ABC):
@@ -55,6 +54,18 @@ class Critic(nn.Module, ABC):
 
 
 class CriticMLP(Critic):
+        """
+        This critic implementation difers from the original paper. 
+        
+        Reference:
+        ---------- 
+        Addressing Function Approximation Error in Actor-Critic Methods, Fujimoto et al., 2018
+        https://arxiv.org/abs/1802.09477  
+        
+
+        Continuous control with deep reinforcement learning, 
+        https://arxiv.org/abs/1509.02971, Lillicrap et al., 2015
+        """ 
         def __init__(
                 self, 
                 state_dim: int, 
@@ -68,27 +79,16 @@ class CriticMLP(Critic):
             self.h1_dim = h1_dim
             self.h2_dim = h2_dim
 
-            self.proj_state = nn.Sequential(
-                nn.Linear(state_dim, h1_dim),
-                nn.LayerNorm(h1_dim),
-                nn.ReLU(True)
+            self.mlp = nn.Sequential(
+                nn.Linear(state_dim + action_dim, h1_dim),
+                nn.ReLU(True),
+            
+                nn.Linear(h1_dim, h2_dim),
+                nn.ReLU(True),
+            
+                nn.Linear(h2_dim, 1)
             )
-
-            self.fuse = nn.Sequential(
-                nn.Linear(h1_dim + action_dim, h2_dim),
-                nn.LayerNorm(h2_dim),
-                nn.ReLU(True)
-            )
-
-            self.out = nn.Linear(h2_dim, 1)
-
-            self.init_weights()
 
         def forward(self, s: torch.Tensor, a: torch.Tensor) -> torch.Tensor:
-            hs = self.proj_state(s)
-            h = self.fuse(torch.cat([hs, a], dim=-1)) 
-            return self.out(h)
-
-        def init_weights(self) -> None:
-            nn.init.uniform_(self.out.weight, -3e-3, 3e-3)
-            nn.init.uniform_(self.out.bias, -3e-3, 3e-3)
+            x = torch.cat([s, a], dim=-1) 
+            return self.mlp(x)
