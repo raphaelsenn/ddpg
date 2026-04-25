@@ -11,13 +11,6 @@ My implementation is not a complete reproduction of the original work, it is mor
 
 Figures: Learning curves for the OpenAI Gym continuous control tasks HalfCheetah-v5, Ant-v5, Hopper-v5 and Walker2d-v5. The shaded region represents the standard deviation of the average evaluation over 3 trials (across 3 seeds). Curves are smoothed with an average filter of size 3.
 
-| Environment | Average Return |
-| --  | -- | 
-| HalfCheetah-v5 | 10097 +/- 170 |
-| Ant-v5 | 10097 +/- 170 |
-| Hopper-v5 | 10097 +/- 170 |
-| Walker2d-v5 | 10097 +/- 170 |
-
 ## Algorithm
 
 [Algorithm 1](./assets/ddpg_pseudocode.png) shows DDPG in detail.
